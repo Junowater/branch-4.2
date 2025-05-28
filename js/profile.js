@@ -39,14 +39,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Render known stations section
   let output = "";
   for (let section in knownStations) {
     const list = Array.from(knownStations[section]);
     output += "<strong>" + section + ":</strong> " + (list.length ? list.join(", ") : "None") + "<br>";
   }
 
-  // Training (from teamMemberData.yellowDots[station] === true)
   const teamMemberData = JSON.parse(localStorage.getItem("teamMemberData") || "{}");
   const memberEntry = teamMemberData[name] || {};
   const trainingStations = [];
@@ -60,15 +58,16 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   output += "<strong>Training:</strong> " + (trainingStations.length ? trainingStations.join(", ") : "None");
-
   document.getElementById("knownStations").innerHTML = output;
 
-  // Quarterly assignment display
-  const quarterAssignments = memberEntry.quarters || {};
+  // Quarterly assignment display (formatted)
   const quarters = ["Quarter 1", "Quarter 2", "Quarter 3", "Quarter 4"];
-  const assignments = quarters.map(q => {
+  const quarterAssignments = memberEntry.quarters || {};
+  let assignmentHTML = "<ul>";
+  quarters.forEach(q => {
     const line = quarterAssignments[q] || "Unassigned";
-    return q + ": " + line;
+    assignmentHTML += "<li><strong>" + q + ":</strong> " + line + "</li>";
   });
-  document.getElementById("lineAssignments").textContent = assignments.join("\n");
+  assignmentHTML += "</ul>";
+  document.getElementById("lineAssignments").innerHTML = assignmentHTML;
 });
