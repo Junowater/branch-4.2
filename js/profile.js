@@ -18,14 +18,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
   const knownStationsSet = new Set();
 
-  // Loop through all saved schedules
   scheduleKeys.forEach(key => {
     const schedule = JSON.parse(localStorage.getItem(key) || "{}");
     for (let quarter in schedule) {
-      const stationMap = schedule[quarter];
-      for (let station in stationMap) {
-        if (stationMap[station] === name) {
-          knownStationsSet.add(station);
+      const stations = schedule[quarter];
+      for (let station in stations) {
+        const entries = stations[station];
+        if (Array.isArray(entries)) {
+          entries.forEach(obj => {
+            if (obj.name === name) {
+              knownStationsSet.add(station);
+            }
+          });
         }
       }
     }
@@ -36,7 +40,6 @@ document.addEventListener("DOMContentLoaded", function() {
     ? knownStationsArray.join(", ")
     : "No stations found.";
 
-  // Load team member assignments
   const teamMemberData = JSON.parse(localStorage.getItem("teamMemberData") || "{}");
   const memberEntry = teamMemberData[name] || {};
   const quarterAssignments = memberEntry.quarters || {};
