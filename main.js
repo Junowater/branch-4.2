@@ -13,7 +13,8 @@ app.on('ready', () => {
         }
     });
 
-    mainWindow.loadFile(path.join(__dirname, 'home.html')); // Update this path as needed
+    // Load the main landing page for the scheduler
+    mainWindow.loadFile(path.join(__dirname, 'index.html'));
 });
 
 app.on('window-all-closed', () => {
