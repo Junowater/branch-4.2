@@ -132,6 +132,22 @@ th {
     background-color: red;
 }
 
+.quarter-toggle {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.quarter-toggle.disabled {
+    color: #888;
+    text-decoration: line-through;
+}
+
+.disabled-quarter {
+    background-color: #f0f0f0;
+    color: #666;
+    pointer-events: none;
+}
+
 /* Pool area */
 .pool {
     border: 3px solid #999;
