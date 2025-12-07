@@ -704,6 +704,7 @@ function deleteTeamMember(name) {
             });
         });
         saveData(false);
+        removeFromGlobalTeamMembers(name);
         generateSkillsTable();
         generateScheduleTable();
         updateUnassignedBox();
@@ -727,10 +728,33 @@ function deleteTeamMember(name) {
     }
 }
 
+function removeFromGlobalTeamMembers(name) {
+    const lower = name.toLowerCase();
+    const linePrefixes = ['frontLine_', 'rearLine_', 'centerSection_'];
+
+    const isStillUsed = linePrefixes.some(prefix => {
+        const stored = JSON.parse(localStorage.getItem(prefix + 'teamMembers') || '[]');
+        return stored.some(member => (member.name || '').toLowerCase() === lower);
+    });
+
+    if (isStillUsed) {
+        return;
+    }
+
+    const allTeamMembers = JSON.parse(localStorage.getItem('allTeamMembers') || '[]');
+    const filtered = allTeamMembers.filter(existing => existing.toLowerCase() !== lower);
+    localStorage.setItem('allTeamMembers', JSON.stringify(filtered));
+}
+
 // Add New Team Member
 function addTeamMember() {
     let nameInput = document.getElementById("newTeamMemberName");
     let name = nameInput.value.trim();
+
+    if (name === "") {
+        alert("Please enter a valid team member name.");
+        return;
+    }
 
     // Safe global uniqueness check using string-only "allTeamMembers"
     let allTeamMembers = JSON.parse(localStorage.getItem("allTeamMembers") || "[]");
@@ -738,17 +762,14 @@ function addTeamMember() {
         alert("Team member '" + name + "' already exists in the system.");
         return;
     }
-    allTeamMembers.push(name);
-    localStorage.setItem("allTeamMembers", JSON.stringify(allTeamMembers));
-    if (name === "") {
-        alert("Please enter a valid team member name.");
-        return;
-    }
 
     if (teamMembers.some(tm => tm.name === name)) {
         alert("A team member with this name already exists.");
         return;
     }
+
+    allTeamMembers.push(name);
+    localStorage.setItem("allTeamMembers", JSON.stringify(allTeamMembers));
 
     teamMembers.push({
         name: name,
