@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Members</title>
+    <link rel="stylesheet" href="css/team-members.css">
+</head>
+<body>
+    <header>
+        <a href="index.html" class="button">Back to Home</a>
+        <h1>Team Members</h1>
+        <p class="subtitle">Review every team member across all lines and the stations they know.</p>
+    </header>
+
+    <main>
+        <section class="controls">
+            <label for="lineFilter">Filter by line:</label>
+            <select id="lineFilter">
+                <option value="all">All Lines</option>
+                <option value="frontLine_">Front Line</option>
+                <option value="rearLine_">Rear Line</option>
+                <option value="centerSection_">Center Section</option>
+            </select>
+            <button id="refreshButton">Refresh</button>
+        </section>
+
+        <section class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Line</th>
+                        <th>Stations</th>
+                    </tr>
+                </thead>
+                <tbody id="teamMembersBody">
+                </tbody>
+            </table>
+            <p id="emptyState" class="empty-state">No team members have been added yet.</p>
+        </section>
+    </main>
+
+    <script src="js/team-members.js"></script>
+</body>
+</html>
