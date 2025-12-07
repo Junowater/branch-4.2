@@ -31,6 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
         extractMembers(frontData);
         extractMembers(rearData);
 
+        const memberData = JSON.parse(localStorage.getItem('teamMemberData') || '{}');
+        Object.keys(memberData).forEach(name => teamMembersSet.add(name));
+
         return Array.from(teamMembersSet).map(name => {
             const activity = (schedule) => {
                 return allQuarters.reduce((count, quarter) => {
@@ -74,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         rotationChartBody.innerHTML = "";
 
         let teamMembers = extractTeamMembers();
+        const memberData = JSON.parse(localStorage.getItem('teamMemberData') || '{}');
 
         const mode = sortSelect ? sortSelect.value : "alpha";
         if (mode === "assignments") {
@@ -90,6 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const nameCell = document.createElement('td');
             nameCell.innerHTML = `<span style="cursor:pointer; text-decoration:underline;" onclick="openModal('${member.name}')">${member.name}</span>`;
             row.appendChild(nameCell);
+
+            const memberAssignments = (memberData[memberName] && memberData[memberName].quarters) || {};
 
             allQuarters.forEach(quarter => {
                 const cell = document.createElement('td');
@@ -113,7 +119,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     return null;
                 };
 
-                assignedStation = findStation(centerData) || findStation(frontData) || findStation(rearData) || "-";
+                const assignedLine = memberAssignments[quarter];
+                if (assignedLine && assignedLine !== "None") {
+                    assignedStation = assignedLine;
+                } else {
+                    assignedStation = findStation(centerData) || findStation(frontData) || findStation(rearData) || "-";
+                }
                 cell.textContent = assignedStation;
                 row.appendChild(cell);
             });
@@ -121,6 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
             rotationChartBody.appendChild(row);
         });
     };
+
+    // expose for modal refresh
+    window.renderRotationChart = renderRotationChart;
 
     // Initial render
     renderRotationChart();

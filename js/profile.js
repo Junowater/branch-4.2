@@ -61,7 +61,7 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("knownStations").innerHTML = output;
 
   // Quarterly assignment display (formatted)
-  const quarters = ["Quarter 1", "Quarter 2", "Quarter 3", "Quarter 4"];
+  const quarters = ["Quarter 1", "Quarter 2", "Quarter 3", "Quarter 4", "Quarter 5"];
   const quarterAssignments = memberEntry.quarters || {};
   let assignmentHTML = "<ul>";
   quarters.forEach(q => {
