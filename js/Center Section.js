@@ -14,6 +14,7 @@ let constraints = [];
 
 const quarters = ["Quarter 1", "Quarter 2", "Quarter 3", "Quarter 4", "Quarter 5"];
 let schedule = {};
+let disabledQuarters = [];
 
 // A global Set to track which constraints got violated
 let violatedConstraints = new Set();
@@ -32,6 +33,27 @@ function initSchedule() {
     });
     // Clear unassigned team members box
     document.getElementById("unassignedContent").innerHTML = "All team members are assigned in all quarters.";
+}
+
+function isQuarterDisabled(quarter) {
+    return disabledQuarters.includes(quarter);
+}
+
+function toggleQuarterState(quarter) {
+    if (isQuarterDisabled(quarter)) {
+        disabledQuarters = disabledQuarters.filter(q => q !== quarter);
+    } else {
+        disabledQuarters.push(quarter);
+        if (schedule[quarter]) {
+            workstations.forEach(ws => {
+                schedule[quarter][ws] = [];
+            });
+        }
+    }
+
+    generateScheduleTable();
+    updateUnassignedBox();
+    saveData(false);
 }
 
 // Function to get default team members
@@ -109,6 +131,17 @@ function loadData() {
     } else {
         schedule = {};  // initialize an empty schedule if none exists
     }
+
+    const savedDisabledQuarters = localStorage.getItem('centerSection_' + "disabledQuarters");
+    if (savedDisabledQuarters) {
+        try {
+            const parsed = JSON.parse(savedDisabledQuarters);
+            disabledQuarters = Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            console.error("Error parsing disabled quarters:", e);
+            disabledQuarters = [];
+        }
+    }
 }
 
 // Save Data to localStorage
@@ -117,6 +150,7 @@ function saveData(showAlert = true) {
     localStorage.setItem('centerSection_' + "constraints", JSON.stringify(constraints));
     localStorage.setItem('centerSection_' + "workstations", JSON.stringify(workstations));
     localStorage.setItem('centerSection_' + "schedule", JSON.stringify(schedule));  // <-- Save schedule
+    localStorage.setItem('centerSection_' + "disabledQuarters", JSON.stringify(disabledQuarters));
 
     if (showAlert) {
         alert("Changes saved successfully!");
@@ -374,7 +408,8 @@ function generateScheduleTable() {
     // Header Row
     let headerRow = "<tr><th>Workstations</th>";
     quarters.forEach(q => {
-        headerRow += `<th>${q} <button onclick="rotateQuarter('${q}')">Rotate</button></th>`;
+        const disabled = isQuarterDisabled(q);
+        headerRow += `<th><span class="quarter-toggle ${disabled ? 'disabled' : ''}" onclick="toggleQuarterState('${q}')">${q}</span> <button onclick="rotateQuarter('${q}')">Rotate</button></th>`;
     });
     headerRow += "</tr>";
     table.innerHTML += headerRow;
@@ -383,30 +418,34 @@ function generateScheduleTable() {
     workstations.forEach(ws => {
         let row = `<tr><td>${ws}</td>`;
         quarters.forEach(q => {
+            const disabled = isQuarterDisabled(q);
             let cellContent = schedule[q][ws].map(assignment => {
                 let name = assignment.name;
                 let lockState = assignment.lockState;
                 let tm = teamMembers.find(tm => tm.name === name);
                 if (tm && tm.active && !tm.unavailableQuarters.includes(q)) {
-                    return `<div class="draggable ${lockState}" draggable="true" data-quarter="${q}" data-workstation="${ws}" ondragstart="drag(event)" onclick="event.stopPropagation(); toggleLockState(event, '${name}', '${q}', '${ws}')">
-                        ${name}
-                        <button class="remove-btn" onclick="removeTeamMemberFromCell(event, '${name}', '${q}', '${ws}')">X</button>
-                    </div>`;
+                    return `<div class="draggable ${lockState}" draggable="true" data-quarter="${q}" data-workstation="${ws}" ondragstart="drag(event)" onclick="event.stopPropagation(); toggleLockState(event, '${name}', '${q}', '${ws}')">`
+                        + `    ${name}`
+                        + `    <button class="remove-btn" onclick="removeTeamMemberFromCell(event, '${name}', '${q}', '${ws}')">X</button>`
+                        + `</div>`;
                 } else {
                     return '';
                 }
             }).join('');
 
-            row += `<td class="droppable" onclick="handleCellClick(event)" ondrop="drop(event)" ondragover="allowDrop(event)" data-quarter="${q}" data-workstation="${ws}">
+            const handlers = disabled ? '' : 'onclick="handleCellClick(event)" ondrop="drop(event)" ondragover="allowDrop(event)"';
+            const cellClass = disabled ? 'disabled-quarter' : 'droppable';
+            row += `<td class="${cellClass}" ${handlers} data-quarter="${q}" data-workstation="${ws}">`
+                + `
                 ${cellContent}
-            </td>`;
+`
+                + `            </td>`;
         });
         row += "</tr>";
         table.innerHTML += row;
     });
     generateTeamMemberPool();
 }
-
 function removeTeamMemberFromCell(event, name, quarter, workstation) {
     event.stopPropagation();
     schedule[quarter][workstation] = schedule[quarter][workstation].filter(a => a.name !== name);
@@ -417,6 +456,9 @@ function removeTeamMemberFromCell(event, name, quarter, workstation) {
 
 // Handle Cell Clicks to Add Team Member
 function handleCellClick(event) {
+    if (isQuarterDisabled(event.currentTarget.dataset.quarter)) {
+        return;
+    }
     let cell = event.currentTarget;
     let quarter = cell.dataset.quarter;
     let workstation = cell.dataset.workstation;
@@ -662,6 +704,7 @@ function deleteTeamMember(name) {
             });
         });
         saveData(false);
+        removeFromGlobalTeamMembers(name);
         generateSkillsTable();
         generateScheduleTable();
         updateUnassignedBox();
@@ -685,10 +728,33 @@ function deleteTeamMember(name) {
     }
 }
 
+function removeFromGlobalTeamMembers(name) {
+    const lower = name.toLowerCase();
+    const linePrefixes = ['frontLine_', 'rearLine_', 'centerSection_'];
+
+    const isStillUsed = linePrefixes.some(prefix => {
+        const stored = JSON.parse(localStorage.getItem(prefix + 'teamMembers') || '[]');
+        return stored.some(member => (member.name || '').toLowerCase() === lower);
+    });
+
+    if (isStillUsed) {
+        return;
+    }
+
+    const allTeamMembers = JSON.parse(localStorage.getItem('allTeamMembers') || '[]');
+    const filtered = allTeamMembers.filter(existing => existing.toLowerCase() !== lower);
+    localStorage.setItem('allTeamMembers', JSON.stringify(filtered));
+}
+
 // Add New Team Member
 function addTeamMember() {
     let nameInput = document.getElementById("newTeamMemberName");
     let name = nameInput.value.trim();
+
+    if (name === "") {
+        alert("Please enter a valid team member name.");
+        return;
+    }
 
     // Safe global uniqueness check using string-only "allTeamMembers"
     let allTeamMembers = JSON.parse(localStorage.getItem("allTeamMembers") || "[]");
@@ -696,17 +762,14 @@ function addTeamMember() {
         alert("Team member '" + name + "' already exists in the system.");
         return;
     }
-    allTeamMembers.push(name);
-    localStorage.setItem("allTeamMembers", JSON.stringify(allTeamMembers));
-    if (name === "") {
-        alert("Please enter a valid team member name.");
-        return;
-    }
 
     if (teamMembers.some(tm => tm.name === name)) {
         alert("A team member with this name already exists.");
         return;
     }
+
+    allTeamMembers.push(name);
+    localStorage.setItem("allTeamMembers", JSON.stringify(allTeamMembers));
 
     teamMembers.push({
         name: name,
@@ -796,6 +859,7 @@ function updateUnassignedBox() {
 
     for (let qIdx = 0; qIdx < quarters.length; qIdx++) {
         let quarter = quarters[qIdx];
+        if (isQuarterDisabled(quarter)) continue;
         workstations.forEach(ws => {
             schedule[quarter][ws].forEach(assignment => {
                 teamMemberAssignments[assignment.name].assignments[qIdx] = ws;
@@ -810,6 +874,10 @@ function updateUnassignedBox() {
 // Drag & Drop
 // ==================================================
 function allowDrop(ev) {
+    const targetQuarter = (ev.currentTarget && ev.currentTarget.dataset && ev.currentTarget.dataset.quarter) || null;
+    if (targetQuarter && isQuarterDisabled(targetQuarter)) {
+        return;
+    }
     ev.preventDefault();
 }
 
@@ -844,6 +912,10 @@ function drop(ev) {
     let targetCell = ev.currentTarget;
     let targetQuarter = targetCell.dataset.quarter;
     let targetWorkstation = targetCell.dataset.workstation;
+
+    if (isQuarterDisabled(targetQuarter)) {
+        return;
+    }
 
     if (!targetQuarter || !targetWorkstation) {
         return;
@@ -944,6 +1016,9 @@ function rotateAssignments() {
     // Fill in locked assignments
     for (let qIdx = 0; qIdx < quarters.length; qIdx++) {
         let quarter = quarters[qIdx];
+        if (isQuarterDisabled(quarter)) {
+            continue;
+        }
         workstations.forEach(ws => {
             schedule[quarter][ws].forEach(assignment => {
                 if (assignment.lockState === 'locked' || assignment.lockState === 'training') {
@@ -961,6 +1036,9 @@ function rotateAssignments() {
     // Clear non-locked assignments
     for (let qIdx = 0; qIdx < quarters.length; qIdx++) {
         let quarter = quarters[qIdx];
+        if (isQuarterDisabled(quarter)) {
+            continue;
+        }
         workstations.forEach(ws => {
             schedule[quarter][ws] = schedule[quarter][ws].filter(
                 assignment => assignment.lockState === 'locked' || assignment.lockState === 'training'
@@ -1004,6 +1082,7 @@ function assignWorkstationsEnhanced(index, teamMemberAssignments, startTime, max
     let allAssigned = true;
     for (let qIdx = 0; qIdx < quarters.length; qIdx++) {
         let quarter = quarters[qIdx];
+        if (isQuarterDisabled(quarter)) continue;
         for (let wsIdx = 0; wsIdx < workstations.length; wsIdx++) {
             let workstation = workstations[wsIdx];
             let existingAssignments = schedule[quarter][workstation];
@@ -1025,6 +1104,7 @@ function assignWorkstationsEnhanced(index, teamMemberAssignments, startTime, max
 
     for (let qIdx = 0; qIdx < quarters.length; qIdx++) {
         let quarter = quarters[qIdx];
+        if (isQuarterDisabled(quarter)) continue;
         for (let wsIdx = 0; wsIdx < workstations.length; wsIdx++) {
             let workstation = workstations[wsIdx];
             let existingAssignments = schedule[quarter][workstation];
@@ -1756,10 +1836,14 @@ function isValidAssignmentPrioritizeNewStation(tm, quarterIndex, workstation, te
 // ==================================================
 function rotateQuarter(quarter) {
     violatedConstraints = new Set();
-    
+
     let qIdx = quarters.indexOf(quarter);
     if (qIdx === -1) {
         console.error("Invalid quarter:", quarter);
+        return;
+    }
+
+    if (isQuarterDisabled(quarter)) {
         return;
     }
 
