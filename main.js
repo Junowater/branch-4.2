@@ -3,17 +3,27 @@ const path = require('path');
 
 let mainWindow;
 
-app.on('ready', () => {
+const createWindow = () => {
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js'), // Optional
+            preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: true
         }
     });
 
-    mainWindow.loadFile(path.join(__dirname, 'home.html')); // Update this path as needed
+    mainWindow.loadFile(path.join(__dirname, 'index.html'));
+};
+
+app.whenReady().then(() => {
+    createWindow();
+
+    app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow();
+        }
+    });
 });
 
 app.on('window-all-closed', () => {
